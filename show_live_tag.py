@@ -5,6 +5,14 @@ import torch.nn as nn
 from pettingzoo.mpe import simple_tag_v3
 import numpy as np
 
+from tournament_loader import load_all_policies, load_all_group_names
+from pettingzoo_wrapper import AdversaryObsRewardWrapper
+
+
+
+prey_groups = list(load_all_group_names('prey'))
+predator_groups = list(load_all_group_names('predator'))
+
 
 def get_agent_positions(env):
     world = env.unwrapped.world
@@ -110,13 +118,13 @@ def render_with_labels(env, scores, group_labels):
     # Draw landmarks
     for landmark in world.landmarks:
         pos = landmark.state.p_pos
-        plt.scatter(pos[0], pos[1], c="gray", s=200, marker="s")
+        plt.scatter(pos[0], pos[1], c="gray", s=2300)#, marker="s")
 
     # Draw agents
     for agent in world.agents:
         pos = agent.state.p_pos
         name = agent.name
-        label = group_labels.get(name, name)
+        label = group_labels[name] #.get(name, name)
 
         color = "red" if "adversary" in name else "green"
 
@@ -148,83 +156,154 @@ def render_with_labels(env, scores, group_labels):
         color="white"
     )
 
-    plt.pause(0.01)
+    plt.pause(0.05)
 
 
+def render_tag(num_timesteps, env, scores, group_names, policies):
 
-plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(6, 6))
 
+    obs = env.reset()
+    scores = {agent: 0.0 for agent in env.agents}
 
-GROUP_LABELS = {
-    "adversary_0": "Group A",
-    "adversary_1": "Group B",
-    "adversary_2": "Group C",
-    "agent_0": "Prey",
-}
+    for t in range(num_timesteps):
+        actions = {}
+        for agent, ob in obs.items():
+            with torch.no_grad():
+                actions[agent] = policies[agent](
+                    torch.tensor(ob, dtype=torch.float32))
 
-#################################################
-# Define a simple policy network
-#################################################
-class PolicyNet(nn.Module):
-    def __init__(self, obs_dim, act_dim):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(obs_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, act_dim),
-            nn.Tanh(),  # continuous actions ∈ [-1, 1]
-        )
+        obs, reward, term, trunc, infos = env.step(actions)
 
-    def forward(self, obs):
-        return torch.sigmoid(self.net(obs))
+        if all(term.values()) or all(trunc.values()):
+            obs = env.reset()
+
+        for agent in reward:
+            scores[agent] += reward[agent]
+
+        render_with_labels(env, scores, group_names)
     
-#################################################
-# Define environment
-#################################################
-env = simple_tag_v3.parallel_env(
-    num_adversaries=3,
-    num_good=1,
-    max_cycles=300,
-    continuous_actions=True,
-    render_mode="rgb_array",
-    # render_mode="human",
-)
+    plt.pause(1.0)    
 
-obs = env.reset(seed=0)
-#################################################
+    plt.close()
+
+    print('Final scores:')
+    for agent, score in scores.items():
+        print(f"{group_names[agent]} ({agent}): {score:.2f}")
+
+    return scores
 
 
-###############################################
-# Initialize policies for each agent
-###############################################
-policies = {}
-for agent in env.agents:
-    obs_dim = env.observation_space(agent).shape[0]
-    act_dim = env.action_space(agent).shape[0]
-    policies[agent] = PolicyNet(obs_dim, act_dim)
-################################################
+def plot_learning_curve(episode_rewards):
+    plt.figure()
+    plt.plot(np.convolve(episode_rewards, np.ones(50)/50, mode='valid'))
+    plt.xlabel('Episode')
+    plt.ylabel('Return (smoothed)')
+    plt.title('Training Curve')
+    plt.show()
 
-obs, _ = env.reset()
-scores = {agent: 0.0 for agent in env.agents}
 
-for t in range(300):
-    actions = {}
-    for agent, ob in obs.items():
-        with torch.no_grad():
-            actions[agent] = policies[agent](
-                torch.tensor(ob, dtype=torch.float32)
-            ).numpy()
+if __name__ == "__main__":
+    plt.figure(figsize=(6, 6))
 
-    obs, rewards, terminations, truncations, infos = env.step(actions)
 
-    for agent in rewards:
-        scores[agent] += rewards[agent]
+    # GROUP_LABELS = {
+    #     "adversary_0": "Group A",
+    #     "adversary_1": "Group B",
+    #     "adversary_2": "Group C",
+    #     "agent_0": "Prey",
+    # }
 
-    render_with_labels(env, scores, GROUP_LABELS)
+    # #################################################
+    # # Define a simple policy network
+    # #################################################
+    # class PolicyNet(nn.Module):
+    #     def __init__(self, obs_dim, act_dim):
+    #         super().__init__()
+    #         self.net = nn.Sequential(
+    #             nn.Linear(obs_dim, 64),
+    #             nn.ReLU(),
+    #             nn.Linear(64, 64),
+    #             nn.ReLU(),
+    #             nn.Linear(64, act_dim),
+    #             nn.Tanh(),  # continuous actions ∈ [-1, 1]
+    #         )
 
-    if all(terminations.values()) or all(truncations.values()):
-        break
+    #     def forward(self, obs):
+    #         return torch.sigmoid(self.net(obs))
+        
+    #################################################
+    # Define environment
+    #################################################
 
-plt.close()
+    # num_agents = number_of_submissions()  
+    # print('Number of submissions:', num_agents)
+
+    # env = simple_tag_v3.parallel_env(
+
+        
+    #     continuous_actions=True,
+    #     render_mode="rgb_array",
+    #     # render_mode="human",
+    # )
+    base_env = simple_tag_v3.parallel_env(
+        num_adversaries=len(predator_groups),
+        num_good=len(prey_groups),
+        num_obstacles=2,
+        max_cycles=300,
+        continuous_actions=True
+    )
+
+    env = AdversaryObsRewardWrapper(base_env)
+
+    # obs = env.reset(seed=0)
+    #################################################
+
+
+    # ###############################################
+    # # Initialize policies for each agent
+    # ###############################################
+    # policies = {}
+    # for agent in env.agents:
+    #     obs_dim = env.observation_space(agent).shape[0]
+    #     act_dim = env.action_space(agent).shape[0]
+    #     policies[agent] = PolicyNet(obs_dim, act_dim)
+    # ################################################
+
+
+    ###############################################
+    # Initialize policies for each agent
+    ###############################################
+    policies, group_names = load_all_policies(env, prey_groups, predator_groups)
+    print('policies:', policies.keys())
+    print('group_names:', group_names)
+
+    # policies['agent_0'] = lambda obs: np.random.uniform(0, 1, size=env.action_space('agent_0').shape[0]).astype(np.float32)
+    # group_names['agent_0'] = 'Prey'
+    ################################################
+
+    # obs = env.reset()
+    # scores = {agent: 0.0 for agent in env.agents}
+
+    # for t in range(200):
+    #     actions = {}
+    #     for agent, ob in obs.items():
+    #         with torch.no_grad():
+    #             actions[agent] = policies[agent](
+    #                 torch.tensor(ob, dtype=torch.float32))
+
+    #     obs, rewards, terminations, truncations, infos = env.step(actions)
+
+    #     for agent in rewards:
+    #         scores[agent] += rewards[agent]
+
+    #     render_with_labels(env, scores, group_names)
+
+    #     if all(terminations.values()) or all(truncations.values()):
+    #         break
+
+    # plt.close()
+    render_tag(num_timesteps=500, env=env, scores={agent: 0.0 for agent in env.agents}, group_names=group_names, policies=policies)
+
+
+
