@@ -177,6 +177,62 @@ def visualize_rollout(
     return scores
 
 
+def draw_fly(screen, pos, color, edge_color, radius):
+    """Draw a fly-like shape at the given position."""
+    x, y = pos
+
+    # Draw wings (two ovals on the sides)
+    wing_width = int(radius * 1.5)
+    wing_height = int(radius * 0.8)
+
+    # Left wing
+    left_wing_rect = pygame.Rect(x - radius - wing_width // 2, y - wing_height // 2, wing_width, wing_height)
+    pygame.draw.ellipse(screen, (200, 200, 255, 128), left_wing_rect)
+    pygame.draw.ellipse(screen, edge_color, left_wing_rect, 1)
+
+    # Right wing
+    right_wing_rect = pygame.Rect(x + radius - wing_width // 2, y - wing_height // 2, wing_width, wing_height)
+    pygame.draw.ellipse(screen, (200, 200, 255, 128), right_wing_rect)
+    pygame.draw.ellipse(screen, edge_color, right_wing_rect, 1)
+
+    # Draw body (elongated oval)
+    body_width = int(radius * 1.2)
+    body_height = int(radius * 2)
+    body_rect = pygame.Rect(x - body_width // 2, y - body_height // 2, body_width, body_height)
+    pygame.draw.ellipse(screen, color, body_rect)
+    pygame.draw.ellipse(screen, edge_color, body_rect, 2)
+
+    # Draw head (circle at top)
+    head_radius = int(radius * 0.6)
+    pygame.draw.circle(screen, color, (x, y - body_height // 2 - head_radius // 2), head_radius)
+    pygame.draw.circle(screen, edge_color, (x, y - body_height // 2 - head_radius // 2), head_radius, 2)
+
+    # Draw eyes (two small white circles)
+    eye_radius = int(head_radius * 0.4)
+    eye_offset = int(head_radius * 0.4)
+    pygame.draw.circle(screen, (255, 255, 255), (x - eye_offset, y - body_height // 2 - head_radius // 2), eye_radius)
+    pygame.draw.circle(screen, (255, 255, 255), (x + eye_offset, y - body_height // 2 - head_radius // 2), eye_radius)
+    pygame.draw.circle(screen, (0, 0, 0), (x - eye_offset, y - body_height // 2 - head_radius // 2), eye_radius // 2)
+    pygame.draw.circle(screen, (0, 0, 0), (x + eye_offset, y - body_height // 2 - head_radius // 2), eye_radius // 2)
+
+    # Draw legs (six lines)
+    leg_length = int(radius * 0.8)
+    leg_positions = [
+        (y - body_height // 4, -1),  # Front left
+        (y - body_height // 4, 1),   # Front right
+        (y, -1),                      # Middle left
+        (y, 1),                       # Middle right
+        (y + body_height // 4, -1),  # Back left
+        (y + body_height // 4, 1)    # Back right
+    ]
+
+    for leg_y, side in leg_positions:
+        start_x = x + side * body_width // 3
+        end_x = start_x + side * leg_length
+        end_y = leg_y + leg_length // 2
+        pygame.draw.line(screen, edge_color, (start_x, leg_y), (end_x, end_y), 2)
+
+
 def render_pygame(screen, env, scores, group_names, timestep, font, small_font,
                   BLACK, WHITE, RED, GREEN, GRAY, DARK_RED, DARK_GREEN, screen_size):
     """Render the environment using pygame."""
@@ -197,7 +253,7 @@ def render_pygame(screen, env, scores, group_names, timestep, font, small_font,
         radius = int(0.2 * screen_size / 2)
         pygame.draw.circle(screen, GRAY, screen_pos, radius)
 
-    # Draw agents
+    # Draw agents as flies
     for agent in world.agents:
         pos = agent.state.p_pos
         name = agent.name
@@ -212,15 +268,14 @@ def render_pygame(screen, env, scores, group_names, timestep, font, small_font,
             color = GREEN
             edge_color = DARK_GREEN
 
-        # Draw agent circle
+        # Draw agent as a fly
         radius = int(0.075 * screen_size / 2)
-        pygame.draw.circle(screen, color, screen_pos, radius)
-        pygame.draw.circle(screen, edge_color, screen_pos, radius, 3)
+        draw_fly(screen, screen_pos, color, edge_color, radius)
 
         # Draw label
         label_surface = small_font.render(label, True, WHITE)
         label_rect = label_surface.get_rect()
-        label_rect.center = (screen_pos[0], screen_pos[1] - radius - 15)
+        label_rect.center = (screen_pos[0], screen_pos[1] - radius * 2 - 15)  # Adjusted for fly height
 
         # Background for label
         bg_rect = label_rect.inflate(10, 4)
