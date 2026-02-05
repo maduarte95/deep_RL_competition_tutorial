@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from pettingzoo.mpe import simple_tag_v3
 from pettingzoo_wrapper import AdversaryObsRewardWrapper, make_env
 import matplotlib.pyplot as plt
 from show_live_tag import plot_learning_curve, render_tag
@@ -19,7 +18,7 @@ GROUP_NAME = "group_C_predator"   # <<< students change this
 AGENT_ROLE = "predator"  # <<< students change this: "predator" or "prey"
 NUM_PREY = 2 # number of prey groups
 NUM_PREDATORS = 1 # number of predator groups
-NUM_EPOCHS = 3000 # <<< students change this: number of training episodes
+NUM_EPOCHS = 1000 # <<< students change this: number of training episodes
 SAVE_PATH = f"{GROUP_NAME}_{AGENT_ROLE}.pt"
 TIMESTEPS_PER_EPISODE = 300 # max timesteps per episode
 

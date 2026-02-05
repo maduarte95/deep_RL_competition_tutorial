@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import torch
 import torch.nn as nn
-from pettingzoo.mpe import simple_tag_v3
 import numpy as np
 
 from tournament_loader import load_all_policies, load_all_group_names
-from pettingzoo_wrapper import AdversaryObsRewardWrapper
+from pettingzoo_wrapper import AdversaryObsRewardWrapper, make_env
 
 
 
+TIMESTEPS_PER_EPISODE = 300 # max timesteps per episode
 prey_groups = list(load_all_group_names('prey'))
 predator_groups = list(load_all_group_names('predator'))
 
@@ -246,15 +246,18 @@ if __name__ == "__main__":
     #     render_mode="rgb_array",
     #     # render_mode="human",
     # )
-    base_env = simple_tag_v3.parallel_env(
-        num_adversaries=len(predator_groups),
-        num_good=len(prey_groups),
-        num_obstacles=2,
-        max_cycles=300,
-        continuous_actions=True
-    )
+    # base_env = simple_tag_v3.parallel_env(
+    #     num_adversaries=len(predator_groups),
+    #     num_good=len(prey_groups),
+    #     num_obstacles=2,
+    #     max_cycles=300,
+    #     continuous_actions=True
+    # )
 
-    env = AdversaryObsRewardWrapper(base_env)
+    # env = AdversaryObsRewardWrapper(base_env)
+    env = make_env(TIMESTEPS_PER_EPISODE, num_predators=len(predator_groups), num_preys=len(prey_groups))
+    obs = env.reset()
+    print('Environment created with', len(env.agents), 'agents.')
 
     # obs = env.reset(seed=0)
     #################################################
