@@ -9,7 +9,7 @@ from tournament_loader import load_default_policies
 
 
 # Load student policy network
-from group_A_policy import PolicyNet  # <<< students change this
+from winners_prey_policy import PolicyNet  # <<< students change this
 
 # ------------------------
 # Configuration
@@ -93,6 +93,7 @@ for episode in range(NUM_EPOCHS):
 
     # Return
     R = sum(rewards)
+
     episode_rewards.append(R)
 
     loss = -R * torch.stack(log_probs).sum()

@@ -16,7 +16,7 @@ prey_groups = list(load_all_group_names('prey'))
 predator_groups = list(load_all_group_names('predator'))
 
 
-torch.set_grad_enabled(False)
+# torch.set_grad_enabled(False)
 
 def get_agent_positions(env):
     world = env.unwrapped.world
