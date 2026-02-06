@@ -87,7 +87,7 @@ def visualize_rollout(
         return torch.rand(act_dim).to(device)
 
     default_policies = load_default_policies(
-        env, num_prey=num_prey, num_predators=num_predators, random_policy=random_policy
+        env, num_prey=num_prey, num_predators=num_predators, random_policy=random_policy, device=device
     )
 
     # Initialize pygame

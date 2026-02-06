@@ -14,7 +14,7 @@ def number_of_submissions(role):
 def load_all_group_names(role):
     return glob.glob("submissions/*_"+role+"_policy.py")
 
-def load_student_policy(pyfile, weightfile, agent_name, env):
+def load_student_policy(pyfile, weightfile, agent_name, env, device='cpu'):
     spec = importlib.util.spec_from_file_location("student_policy", pyfile)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -24,7 +24,8 @@ def load_student_policy(pyfile, weightfile, agent_name, env):
     print('Loading policy for', agent_name, 'obs_dim:', obs_dim, 'act_dim:', act_dim)
 
     net = module.PolicyNet(obs_dim, act_dim)
-    net.load_state_dict(torch.load(weightfile))
+    net.load_state_dict(torch.load(weightfile, map_location=device))
+    net.to(device)
     net.eval()
     return net
 
@@ -61,7 +62,7 @@ def load_all_policies(env, prey_groups, predator_groups):
     return policies, group_names
 
 
-def load_default_policies(env, num_prey, num_predators, random_policy):
+def load_default_policies(env, num_prey, num_predators, random_policy, device='cpu'):
     policies = {}
     group_names = {}
 
@@ -76,7 +77,7 @@ def load_default_policies(env, num_prey, num_predators, random_policy):
             policies[agent_name] = random_policy
         else:
             pyfile = files[0]
-            policies[agent_name] = load_student_policy(pyfile, weightfile, agent_name, env)
+            policies[agent_name] = load_student_policy(pyfile, weightfile, agent_name, env, device)
 
     # load all predator policies
     files = sorted(glob.glob("default_policy.py"))
@@ -88,7 +89,7 @@ def load_default_policies(env, num_prey, num_predators, random_policy):
             policies[agent_name] = random_policy
         else:
             pyfile = files[0]
-            policies[agent_name] = load_student_policy(pyfile, weightfile, agent_name, env)
+            policies[agent_name] = load_student_policy(pyfile, weightfile, agent_name, env, device)
 
     return policies
 

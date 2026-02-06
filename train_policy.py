@@ -44,7 +44,7 @@ act_dim = env.action_space(agent_id)
 # Initialize policy network and optimizer
 # ------------------------
 policy = PolicyNet(obs_dim, act_dim)
-optimizer = optim.Adam(policy.parameters(), lr=1e-3)
+optimizer = optim.Adam(policy.parameters(), lr=3e-4)
 
 # ------------------------
 # Random policy or default policy for other agents
@@ -56,9 +56,11 @@ default_policies = load_default_policies(env, num_prey=NUM_PREY, num_predators=N
 
 
 # ------------------------
-# Training loop (REINFORCE)
+# Training loop (REINFORCE with baseline)
 # ------------------------
 episode_rewards = []
+reward_baseline = 0.0  # Running average baseline
+
 for episode in range(NUM_EPOCHS):
     obs = env.reset()
     log_probs = []
@@ -96,13 +98,19 @@ for episode in range(NUM_EPOCHS):
 
     episode_rewards.append(R)
 
-    loss = -R * torch.stack(log_probs).sum()
+    # Update baseline (exponential moving average)
+    reward_baseline = 0.95 * reward_baseline + 0.05 * R
+
+    # Baseline subtraction reduces variance
+    advantage = R - reward_baseline
+    loss = -advantage * torch.stack(log_probs).sum()
+
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
     if episode % 50 == 0:
-        print(f"Episode {episode}, return = {R:.2f}")
+        print(f"Episode {episode}, return = {R:.2f}, baseline = {reward_baseline:.2f}")
 
 # ------------------------
 # Save model

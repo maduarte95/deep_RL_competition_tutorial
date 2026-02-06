@@ -17,7 +17,5 @@ class ActorCritic(nn.Module):
 
         self.actor = PolicyNet(obs_dim, act_dim)
 
-        self.critic = nn.Linear(128, 1)
-
     def forward(self, x):
         return self.actor(x), self.critic(x)

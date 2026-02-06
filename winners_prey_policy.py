@@ -7,11 +7,34 @@ class PolicyNet(nn.Module):
     def __init__(self, obs_dim, act_dim): # DO NOT CHANGE THIS
         super().__init__()
 
-        # This network architecture is just a suggestion, feel free to change it as you like (but do not change the class name or __init__ signature)
-        self.net = nn.Sequential(
-            nn.Linear(obs_dim, 128),
+        hidden_dim = 256
+
+        # Input projection
+        self.input_layer = nn.Linear(obs_dim, hidden_dim)
+
+        # Residual blocks for deep learning capacity
+        self.res_block1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+
+        self.res_block2 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+
+        self.res_block3 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+        )
+
+        # Output head
+        self.output_layer = nn.Sequential(
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 128),
             nn.ReLU(),
             nn.Linear(128, act_dim),
             nn.Sigmoid()
@@ -19,7 +42,14 @@ class PolicyNet(nn.Module):
 
     # Do NOT change this signature, otherwise the tournament loader will not work
     def forward(self, x):
-        return self.net(x)
+        x = self.input_layer(x)
+
+        # Residual connections allow deep learning without gradient issues
+        x = x + self.res_block1(x)
+        x = x + self.res_block2(x)
+        x = x + self.res_block3(x)
+
+        return self.output_layer(x)
 
     # this is reinforce: policy gradient without critic
 
